@@ -1,9 +1,16 @@
+
 import { apiService } from "./api.service";
 import { LoginRequest, ResetPasswordRequest, LoginResponse } from "@/models/models";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 class AuthService {
+  // Generate a random 10-digit ID
+  generateUserId(): string {
+    // Generate a number between 1000000000 and 9999999999 (10 digits)
+    return Math.floor(1000000000 + Math.random() * 9000000000).toString();
+  }
+
   // Check if user is logged in
   isLoggedIn(): boolean {
     const token = localStorage.getItem('token');
@@ -240,8 +247,8 @@ class AuthService {
         const { error: updateError } = await supabase
           .from('otps')
           .update({
-            otp_value: otp, // Changed from otp_code to otp_value
-            validity: expiresAt.toISOString() // Changed from expires_at to validity
+            otp_value: otp,
+            validity: expiresAt.toISOString()
           })
           .eq('id', userId);
           
@@ -255,8 +262,8 @@ class AuthService {
           .from('otps')
           .insert({
             id: userId, // Use the userId as the id
-            otp_value: otp, // Changed from otp_code to otp_value
-            validity: expiresAt.toISOString(), // Changed from expires_at to validity
+            otp_value: otp,
+            validity: expiresAt.toISOString(),
             expired: false
           });
           
@@ -292,8 +299,8 @@ class AuthService {
       // Get the stored OTP for this user
       const { data, error } = await supabase
         .from('otps')
-        .select('otp_value, validity') // Changed from otp_code, expires_at
-        .eq('id', userId) // Using id directly
+        .select('otp_value, validity')
+        .eq('id', userId)
         .maybeSingle();
       
       if (error || !data) {
@@ -308,7 +315,7 @@ class AuthService {
       
       // Check if OTP is expired
       const now = new Date();
-      const expiresAt = new Date(data.validity); // Changed from expires_at to validity
+      const expiresAt = new Date(data.validity);
       
       if (now > expiresAt) {
         toast({
@@ -320,7 +327,7 @@ class AuthService {
       }
       
       // Check if OTP matches
-      if (data.otp_value === otp) { // Changed from otp_code to otp_value
+      if (data.otp_value === otp) {
         toast({
           title: "OTP Verified",
           description: "OTP verification successful.",
@@ -378,8 +385,7 @@ class AuthService {
       await supabase
         .from('otps')
         .delete()
-        .eq('user_id', request.userId)
-        .eq('user_type', request.userType);
+        .eq('id', request.userId);
       
       toast({
         title: "Password Reset",
@@ -451,6 +457,81 @@ class AuthService {
       return data;
     } catch (error) {
       console.error(`Error fetching ${userType} details:`, error);
+      return null;
+    }
+  }
+
+  // Register a new doctor
+  async registerDoctor(doctorData: Omit<any, 'id'>): Promise<string | null> {
+    try {
+      // Generate a 10-digit ID for the doctor
+      const newDoctorId = this.generateUserId();
+      
+      const { error } = await supabase
+        .from('doctors')
+        .insert({
+          ...doctorData,
+          id: newDoctorId
+        });
+        
+      if (error) {
+        console.error("Error registering doctor:", error);
+        return null;
+      }
+      
+      return newDoctorId;
+    } catch (error) {
+      console.error("Doctor registration error:", error);
+      return null;
+    }
+  }
+
+  // Register a new hospital
+  async registerHospital(hospitalData: Omit<any, 'id'>): Promise<string | null> {
+    try {
+      // Generate a 10-digit ID for the hospital
+      const newHospitalId = this.generateUserId();
+      
+      const { error } = await supabase
+        .from('hospitals')
+        .insert({
+          ...hospitalData,
+          id: newHospitalId
+        });
+        
+      if (error) {
+        console.error("Error registering hospital:", error);
+        return null;
+      }
+      
+      return newHospitalId;
+    } catch (error) {
+      console.error("Hospital registration error:", error);
+      return null;
+    }
+  }
+
+  // Register a new user/patient
+  async registerUser(userData: Omit<any, 'id'>): Promise<string | null> {
+    try {
+      // Generate a 10-digit ID for the user
+      const newUserId = this.generateUserId();
+      
+      const { error } = await supabase
+        .from('patients')
+        .insert({
+          ...userData,
+          id: newUserId
+        });
+        
+      if (error) {
+        console.error("Error registering user:", error);
+        return null;
+      }
+      
+      return newUserId;
+    } catch (error) {
+      console.error("User registration error:", error);
       return null;
     }
   }
